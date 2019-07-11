@@ -7,7 +7,7 @@ command_background="true"
 start_stop_daemon_args="--stderr /var/log/${RC_SVCNAME}/${RC_SVCNAME}.log --stdout /var/log/${RC_SVCNAME}/${RC_SVCNAME}.log"
 supervisor=supervise-daemon
 start_pre() {
-	checkpath -m 0750 -d /var/log/\${RC_SVCNAME}
+	checkpath -m 0750 -d /var/log/${RC_SVCNAME}
 	return 0
 }
 

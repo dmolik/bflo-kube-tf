@@ -1,0 +1,28 @@
+---
+apiVersion: kubeadm.k8s.io/v1beta1
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: %v
+  bindPort: 6443
+nodeRegistration:
+  criSocket: /run/containerd/containterd.sock
+#  kubeletExtraArgs:
+#    cloud-provider: external
+---
+apiVersion: kubeadm.k8s.io/v1beta1
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "%v:6443"
+#apiServer:
+#  certSANs:
+#    - %v
+#  extraArgs:
+#   cloud-provider: external
+#controllerManager:
+#  extraArgs:
+#    cloud-provider: external
+clusterName: "bflo.meetup"
+networking:
+  dnsDomain: "%s"
+  podSubnet: "10.20.128.0/17"
+  serviceSubnet: "10.20.64.0/18"
