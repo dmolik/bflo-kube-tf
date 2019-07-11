@@ -50,7 +50,6 @@ resource "aws_security_group" "core-ssh" {
 		protocol    = "-1"
 		cidr_blocks = ["0.0.0.0/0"]
 	}
-
 }
 
 resource "aws_subnet" "nodes" {
@@ -78,10 +77,10 @@ resource "aws_subnet" "pods" {
 	}
 }
 
-resource "aws_internet_gateway" "core" {
+resource "aws_internet_gateway" "edge" {
 	vpc_id = "${aws_vpc.main.id}"
 	tags = {
-		Name = "Core"
+		Name = "Edge"
 	}
 }
 resource "aws_route_table" "pub-default" {
@@ -89,14 +88,44 @@ resource "aws_route_table" "pub-default" {
 
 	route {
 		cidr_block = "0.0.0.0/0"
-		gateway_id = "${aws_internet_gateway.core.id}"
+		gateway_id = "${aws_internet_gateway.edge.id}"
 	}
 
 	tags = {
-		Name = "Core Default"
+		Name = "Edge"
 	}
 }
 resource "aws_route_table_association" "public-edge-association" {
 	subnet_id = "${aws_subnet.edge.id}"
 	route_table_id = "${aws_route_table.pub-default.id}"
+}
+
+resource "aws_eip" "core" {
+	vpc = true
+}
+
+resource "aws_nat_gateway" "core" {
+	allocation_id = "${aws_eip.core.id}"
+	subnet_id     = "${aws_subnet.edge.id}"
+
+	tags = {
+		Name = "Core"
+	}
+}
+
+resource "aws_route_table" "core" {
+	vpc_id = "${aws_vpc.main.id}"
+	route {
+		cidr_block = "0.0.0.0/0"
+		nat_gateway_id = "${aws_nat_gateway.core.id}"
+	}
+
+	tags = {
+		Name = "Core"
+	}
+}
+# Terraform Training private routes
+resource "aws_route_table_association" "core-association" {
+	subnet_id = "${aws_subnet.nodes.id}"
+	route_table_id = "${aws_route_table.core.id}"
 }

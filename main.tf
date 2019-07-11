@@ -14,7 +14,7 @@ resource "aws_key_pair" "deployer" {
 resource "aws_instance" "edge" {
 	ami = "ami-0fb394548acf15691"
 	subnet_id = "${aws_subnet.edge.id}"
-	instance_type = "t3a.medium"
+	instance_type = "t2.micro"
 
 	key_name = "${aws_key_pair.deployer.key_name}"
 	vpc_security_group_ids = ["${aws_security_group.edge-rules.id}"]
@@ -36,8 +36,62 @@ resource "aws_instance" "edge" {
 	}
 }
 
+resource "aws_instance" "master-bootstrap" {
+	ami = "ami-0fb394548acf15691"
+	subnet_id = "${aws_subnet.nodes.id}"
+	instance_type = "t2.medium"
+
+	key_name = "${aws_key_pair.deployer.key_name}"
+	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}"]
+	tags = {
+		Name = "Master Bootstrap",
+	}
+	root_block_device {
+		volume_size = 50
+	}
+
+	provisioner "file" {
+		source      = "files/"
+		destination = "/tmp"
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+	provisioner "remote-exec" {
+		scripts = [
+			"scripts/install-kubernetes.sh"
+		]
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+	provisioner "remote-exec" {
+		inline  = [
+			"sudo cp /tmp/kubelet.confd.master /etc/conf.d/kubelet"
+		]
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+}
 resource "aws_instance" "master" {
-	count = 1
+	count = 2
+	depends_on = [ aws_instance.master-bootstrap ]
 	ami = "ami-0fb394548acf15691"
 	subnet_id = "${aws_subnet.nodes.id}"
 	instance_type = "t2.medium"
@@ -47,10 +101,25 @@ resource "aws_instance" "master" {
 	tags = {
 		Name = "Master-${count.index}"
 	}
+	root_block_device {
+		volume_size = 50
+	}
 
+	provisioner "file" {
+		source      = "files/"
+		destination = "/tmp"
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
 	provisioner "remote-exec" {
-		inline = [
-			"echo Hello World!",
+		scripts = [
+			"scripts/install-kubernetes.sh"
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -59,15 +128,26 @@ resource "aws_instance" "master" {
 			password = ""
 			private_key = file("~/.ssh/aws")
 			bastion_host = "${aws_instance.edge.public_ip}"
-			bastion_user = "alpine"
-			bastion_password = "" 
-			bastion_private_key = file("~/.ssh/aws")
+		}
+	}
+	provisioner "remote-exec" {
+		inline  = [
+			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet"
+		]
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
 		}
 	}
 }
 
 resource "aws_instance" "worker" {
-	count = 1
+	depends_on = [ aws_instance.master-bootstrap ]
+	count = 3
 	ami = "ami-0fb394548acf15691"
 	subnet_id = "${aws_subnet.nodes.id}"
 	instance_type = "t3a.medium"
@@ -77,22 +157,46 @@ resource "aws_instance" "worker" {
 	tags = {
 		Name = "Worker-${count.index}"
 	}
+	root_block_device {
+		volume_size = 50
+	}
 
+	provisioner "file" {
+		source      = "files/"
+		destination = "/tmp"
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
 	provisioner "remote-exec" {
-		inline = [
-			"echo Hello World!",
+		scripts = [
+			"scripts/install-kubernetes.sh"
 		]
 		connection {
 			host = "${self.private_ip}"
 			type = "ssh"
 			user = "alpine"
 			password = ""
-			agent = true
 			private_key = file("~/.ssh/aws")
 			bastion_host = "${aws_instance.edge.public_ip}"
-			bastion_user = "alpine"
-			bastion_password = "" 
-			bastion_private_key = file("~/.ssh/aws")
+		}
+	}
+	provisioner "remote-exec" {
+		inline  = [
+			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet"
+		]
+		connection {
+			host = "${self.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
 		}
 	}
 }

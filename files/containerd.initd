@@ -1,0 +1,16 @@
+#!/sbin/openrc-run
+
+description="Containerd container runtime"
+command="/usr/bin/containerd"
+pidfile="${pidfile:-/run/${RC_SVCNAME}.pid}"
+command_background="true"
+start_stop_daemon_args="--stderr /var/log/${RC_SVCNAME}/${RC_SVCNAME}.log --stdout /var/log/${RC_SVCNAME}/${RC_SVCNAME}.log"
+supervisor=supervise-daemon
+start_pre() {
+	checkpath -m 0750 -d /var/log/\${RC_SVCNAME}
+	return 0
+}
+
+start_post() {
+	ewaitfile 5 /run/containerd/containerd.sock
+}

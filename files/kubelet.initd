@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+
+escription="Kubelet, a Kubernetes node agent"
+pidfile=${pidfile:-"/run/${RC_SVCNAME}.pid"}
+user=${user:-root}
+group=${group:-root}
+
+command="/usr/bin/kubelet"
+command_args="${command_args}"
+command_background="true"
+start_stop_daemon_args="--user ${user} --group ${group} --stdout /var/log/kubelet/${RC_SVCNAME}.log --stderr /var/log/kubelet/${RC_SVCNAME}.log"
+supervisor=supervise-daemon
+respawn_max=9999
+respawn_delay=3
+
+depend() {
+	after net
+}
+
+start_pre() {
+	checkpath -m 0750 -d /var/log/${RC_SVCNAME}
+	return 0
+}

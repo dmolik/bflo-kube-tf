@@ -1,0 +1,1 @@
+command_args="--network-plugin=cni --container-runtime-endpoint=/run/containerd/containerd.sock --container-runtime remote --cni-bin-dir=/opt/cni/bin --cni-conf-dir=/etc/cni/net.d  --kubeconfig=/etc/kubernetes/kubelet.conf --config=/var/lib/kubelet/config.yaml"
