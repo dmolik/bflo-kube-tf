@@ -1,11 +1,11 @@
 #!/bin/sh
 
-sudo su -c 'echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories'
 sudo apk update
+sudo su -c 'echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories'
+sudo apk add util-linux
 sudo su -c 'uuidgen|tr -d "-" > /etc/machine-id'
 sudo apk add socat ethtool ipvsadm iproute2 iptables ebtables
-sudo apk add containerd
-sudo apk add kubernetes
+sudo apk add containerd kubernetes ca-certificates
 
 sudo rm /usr/bin/kube-apiserver
 sudo rm /usr/bin/kube-controller-manager
@@ -18,6 +18,7 @@ tar xf crictl*
 rm crictl-v1.15.0-linux-amd64.tar.gz
 sudo mv crictl /usr/bin
 sudo modprobe configs
+sudo modprobe overlay
 sudo modprobe ip_tables
 sudo modprobe br_netfilter
 sudo modprobe ip_vs
@@ -30,6 +31,8 @@ sudo cp /tmp/containerd.initd /etc/init.d/containerd
 sudo chmod +x /etc/init.d/containerd
 sudo cp /tmp/kubelet.initd /etc/init.d/kubelet
 sudo chmod +x /etc/init.d/kubelet
+sudo mkdir /etc/containerd
+sudo cp /tmp/config.toml /etc/containerd/
 
 sudo mkdir -p /etc/cni/net.d
 sudo mkdir -p /opt/cni/bin
