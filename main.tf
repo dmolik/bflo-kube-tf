@@ -246,3 +246,25 @@ resource "aws_instance" "worker" {
 		}
 	}
 }
+
+resource "null_resource" "master-provision" {
+	depends_on = [ aws_instance.master-bootstrap ]
+	provisioner "remote-exec" {
+		inline  = [
+			"mkdir -p $HOME/.kube",
+			"sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
+			"sudo chown alpine:alpine $HOME/.kube/config",
+			"chmod +x /tmp/prep-config.sh",
+			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17",
+			"kubectl apply -f /tmp/config/calico-typha.yaml",
+		]
+		connection {
+			host = "${aws_instance.master-bootstrap.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+}
