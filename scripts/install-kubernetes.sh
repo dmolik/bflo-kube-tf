@@ -11,8 +11,13 @@ sudo rm /usr/bin/kube-apiserver
 sudo rm /usr/bin/kube-controller-manager
 sudo rm /usr/bin/kube-scheduler
 sudo rm /usr/bin/kube-proxy
-sudo su -c "echo 'cgroup /sys/fs/cgroup cgroup defaults 0 0' >> /etc/fstab"
-sudo mount -t cgroup cgroup /sys/fs/cgroup
+#sudo su -c "echo 'cgroup /sys/fs/cgroup cgroup defaults 0 0' >> /etc/fstab"
+#sudo mount -t cgroup cgroup /sys/fs/cgroup
+sudo mount -t tmpfs cgroup_root /sys/fs/cgroup
+for d in cpuset memory cpu cpuacct blkio devices freezer net_cls perf_event net_prio hugetlb pids; do
+	sudo mkdir /sys/fs/cgroup/$d
+	sudo mount -t cgroup $d -o $d /sys/fs/cgroup/$d
+done
 wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.15.0/crictl-v1.15.0-linux-amd64.tar.gz
 tar xf crictl*
 rm crictl-v1.15.0-linux-amd64.tar.gz

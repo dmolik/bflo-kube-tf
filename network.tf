@@ -51,6 +51,23 @@ resource "aws_security_group" "core-ssh" {
 		cidr_blocks = ["0.0.0.0/0"]
 	}
 }
+resource "aws_security_group" "core-kube" {
+	name = "core-kube"
+	vpc_id = "${aws_vpc.main.id}"
+	ingress {
+		from_port = 0
+		to_port = 0
+		protocol = -1
+		cidr_blocks = ["${aws_subnet.nodes.cidr_block}", "${aws_subnet.edge.cidr_block}","${aws_subnet.services.cidr_block}","${aws_subnet.pods.cidr_block}"]
+	}
+
+	egress {
+		from_port   = 0
+		to_port     = 0
+		protocol    = "-1"
+		cidr_blocks = ["0.0.0.0/0"]
+	}
+}
 
 resource "aws_subnet" "nodes" {
 	vpc_id = "${aws_vpc.main.id}"
