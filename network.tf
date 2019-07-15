@@ -19,6 +19,7 @@ resource "aws_subnet" "edge" {
 resource "aws_security_group" "edge-rules" {
 	name = "edge-rules"
 	vpc_id = "${aws_vpc.main.id}"
+
 	ingress {
 		from_port = 22
 		to_port = 22
@@ -32,6 +33,9 @@ resource "aws_security_group" "edge-rules" {
 		to_port     = 0
 		protocol    = "-1"
 		cidr_blocks = ["0.0.0.0/0"]
+	}
+	tags = {
+		Name = "Edge SSH"
 	}
 }
 resource "aws_security_group" "core-ssh" {
@@ -50,6 +54,10 @@ resource "aws_security_group" "core-ssh" {
 		protocol    = "-1"
 		cidr_blocks = ["0.0.0.0/0"]
 	}
+
+	tags = {
+		Name = "Core SSH"
+	}
 }
 resource "aws_security_group" "core-kube" {
 	name = "core-kube"
@@ -66,6 +74,9 @@ resource "aws_security_group" "core-kube" {
 		to_port     = 0
 		protocol    = "-1"
 		cidr_blocks = ["0.0.0.0/0"]
+	}
+	tags = {
+		Name = "Core Kube"
 	}
 }
 
