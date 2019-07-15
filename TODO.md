@@ -4,9 +4,9 @@
     - [ ] Preload Containers
     - [ ] Ostree ( maybe use for os as well )
     - [ ] cri-o
-    - [ [ Crun
-  - [ ] CNI
-  - [ ] Master HA
+    - [ ] Crun
+  - [ ] CNI - probably aws-cni
+  - [ ] Master HA - some sort of strange keepalived with haproxy :)
   - [ ] Multi-Zone
   - [ ] Monitoring
   - [ ] Cloud Provider
