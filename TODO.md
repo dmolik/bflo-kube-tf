@@ -1,0 +1,15 @@
+  - [ ] Converge on host names and instance names
+  - [ ] Packer AMIs
+    - [ ] Preload Kubernetes
+    - [ ] Preload Containers
+    - [ ] Ostree ( maybe use for os as well )
+    - [ ] cri-o
+    - [ [ Crun
+  - [ ] CNI
+  - [ ] Master HA
+  - [ ] Multi-Zone
+  - [ ] Monitoring
+  - [ ] Cloud Provider
+  - [ ] Storage
+  - [ ] Dex (OIDC)
+  - [ ] External DNS
