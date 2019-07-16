@@ -1,15 +1,15 @@
-  - [ ] Converge on host names and instance names
+  - [x] Converge on host names and instance names
   - [ ] Packer AMIs
     - [ ] Preload Kubernetes
     - [ ] Preload Containers
     - [ ] Ostree ( maybe use for os as well )
     - [ ] cri-o
     - [ ] Crun
-  - [ ] CNI - probably aws-cni
+  - [x] CNI - probably aws-cni
   - [ ] Master HA - some sort of strange keepalived with haproxy :)
   - [ ] Multi-Zone
   - [ ] Monitoring
-  - [ ] Cloud Provider
+  - [x] Cloud Provider
   - [ ] Storage
   - [ ] Dex (OIDC)
   - [ ] External DNS
