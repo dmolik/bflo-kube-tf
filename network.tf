@@ -3,6 +3,7 @@ resource "aws_vpc" "main" {
 
 	tags = {
 		Name = "Main"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 
@@ -77,6 +78,7 @@ resource "aws_security_group" "core-kube" {
 	}
 	tags = {
 		Name = "Core Kube"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 
@@ -86,6 +88,7 @@ resource "aws_subnet" "nodes" {
 	availability_zone = var.availability_zone
 	tags = {
 		Name = "Nodes"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 resource "aws_subnet" "services" {
@@ -94,6 +97,7 @@ resource "aws_subnet" "services" {
 	availability_zone = var.availability_zone
 	tags = {
 		Name = "Services"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 resource "aws_subnet" "pods" {
@@ -102,6 +106,7 @@ resource "aws_subnet" "pods" {
 	availability_zone = var.availability_zone
 	tags = {
 		Name = "Pods"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 
@@ -150,6 +155,7 @@ resource "aws_route_table" "core" {
 
 	tags = {
 		Name = "Core"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 }
 # Terraform Training private routes

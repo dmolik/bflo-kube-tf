@@ -5,6 +5,11 @@ variable "availability_zone" {
 	default = "us-east-2b"
 }
 
+variable "cluster_name" {
+	type = string
+	default = "bflo-kube"
+}
+
 resource "aws_key_pair" "deployer" {
 	key_name = "deployer"
 	public_key = file("~/.ssh/aws.pub")
@@ -20,6 +25,7 @@ resource "aws_instance" "edge" {
 	vpc_security_group_ids = ["${aws_security_group.edge-rules.id}"]
 	tags = {
 		Name = "Edge"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 
 	provisioner "remote-exec" {
@@ -44,8 +50,11 @@ resource "aws_instance" "master-bootstrap" {
 
 	key_name = "${aws_key_pair.deployer.key_name}"
 	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	iam_instance_profile = "${aws_iam_instance_profile.master_profile.name}"
+
 	tags = {
 		Name = "Master Bootstrap",
+		KubernetesCluster = "${var.cluster_name}"
 	}
 	root_block_device {
 		volume_size = 50
@@ -106,7 +115,7 @@ resource "aws_instance" "master-bootstrap" {
 	}
 	provisioner "remote-exec" {
 		inline  = [
-			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${self.private_ip} 10.20.64.0/18 10.12.128.0/17 > ~/output.json",
+			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${self.private_ip} ${var.cluster_name} 10.20.64.0/18 10.12.128.0/17 > ~/output.json",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -142,8 +151,11 @@ resource "aws_instance" "master" {
 
 	key_name = "${aws_key_pair.deployer.key_name}"
 	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	iam_instance_profile = "${aws_iam_instance_profile.master_profile.name}"
+
 	tags = {
 		Name = "Master-${count.index}"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 	root_block_device {
 		volume_size = 50
@@ -177,7 +189,7 @@ resource "aws_instance" "master" {
 	provisioner "remote-exec" {
 		inline  = [
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
-			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --experimental-control-plane --certificate-key ${data.external.kubeadm.result.cert_key}",
+			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --experimental-control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -199,8 +211,10 @@ resource "aws_instance" "worker" {
 
 	key_name = "${aws_key_pair.deployer.key_name}"
 	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	iam_instance_profile = "${aws_iam_instance_profile.node_profile.name}"
 	tags = {
 		Name = "Worker-${count.index}"
+		KubernetesCluster = "${var.cluster_name}"
 	}
 	root_block_device {
 		volume_size = 50
@@ -234,7 +248,7 @@ resource "aws_instance" "worker" {
 	provisioner "remote-exec" {
 		inline  = [
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
-			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash}",
+			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --node-name $(hostname -f)",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -255,8 +269,9 @@ resource "null_resource" "master-provision" {
 			"sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
 			"sudo chown alpine:alpine $HOME/.kube/config",
 			"chmod +x /tmp/prep-config.sh",
-			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17",
+			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name}",
 			"kubectl apply -f /tmp/config/calico-typha.yaml",
+			"kubectl apply -f /tmp/config/cloud-controller-manager.yaml",
 		]
 		connection {
 			host = "${aws_instance.master-bootstrap.private_ip}"
