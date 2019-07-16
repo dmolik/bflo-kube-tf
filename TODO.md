@@ -8,8 +8,9 @@
   - [x] CNI - probably aws-cni
   - [ ] Master HA - some sort of strange keepalived with haproxy :)
   - [ ] Multi-Zone
-  - [ ] Monitoring
+  - [ ] Monitoring - Prometheus-Operator
   - [x] Cloud Provider
   - [ ] Storage
   - [ ] Dex (OIDC)
   - [ ] External DNS
+  - [ ] Ingress HaProxy or Nginx?
