@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
 
-escription="Kubelet, a Kubernetes node agent"
+description="Kubelet, a Kubernetes node agent"
 pidfile=${pidfile:-"/run/${RC_SVCNAME}.pid"}
 user=${user:-root}
 group=${group:-root}
