@@ -4,7 +4,7 @@ Go from Zero to Hero in about 5 minutes. The whole concept is to go from nothing
 
 See the [Todo](TODO.md) for roadmap and plans.
 
-## Resouces used
+## Resources used
 
   - [Terraform Docs](https://www.terraform.io/docs/index.html)
   - [Terraform AWS Provider Docs](https://www.terraform.io/docs/providers/aws/index.html)
