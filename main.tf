@@ -25,7 +25,6 @@ resource "aws_instance" "edge" {
 	vpc_security_group_ids = ["${aws_security_group.edge-rules.id}"]
 	tags = {
 		Name = "Edge"
-		KubernetesCluster = "${var.cluster_name}"
 	}
 
 	provisioner "remote-exec" {
@@ -42,8 +41,57 @@ resource "aws_instance" "edge" {
 	}
 }
 
+resource "aws_elb" "core-elb" {
+	name = "core-kube-elb"
+
+	// availability_zones = ["us-east-2b"]
+	security_groups = ["${aws_security_group.core-lb.id}"]
+	subnets = ["${aws_subnet.nodes.id}"]
+	internal = true
+	listener {
+		instance_port     = 6443
+		instance_protocol = "tcp"
+		lb_port           = 6443
+		lb_protocol       = "tcp"
+	}
+
+	cross_zone_load_balancing   = true
+	idle_timeout                = 400
+	connection_draining         = true
+	connection_draining_timeout = 400
+
+	tags = {
+		Name = "Core Kube"
+		KubernetesCluster = "${var.cluster_name}"
+	}
+}
+resource "aws_elb" "pub-elb" {
+	name = "pub-kube-elb"
+
+	// availability_zones = ["us-east-2a", "us-east-2b", "us-east-2c"]
+	security_groups = ["${aws_security_group.core-lb.id}"]
+	subnets = ["${aws_subnet.edge.id}"]
+	//internal = true
+	listener {
+		instance_port     = 6443
+		instance_protocol = "tcp"
+		lb_port           = 6443
+		lb_protocol       = "tcp"
+	}
+
+	cross_zone_load_balancing   = true
+	idle_timeout                = 400
+	connection_draining         = true
+	connection_draining_timeout = 400
+
+	tags = {
+		Name = "Pub Kube"
+		KubernetesCluster = "${var.cluster_name}"
+	}
+}
+
 resource "aws_instance" "master-bootstrap" {
-	depends_on = [ aws_route_table_association.core-association ]
+	depends_on = [ aws_route_table_association.public-edge-association ]
 	ami = "ami-0fb394548acf15691"
 	subnet_id = "${aws_subnet.nodes.id}"
 	instance_type = "t2.medium"
@@ -88,20 +136,6 @@ resource "aws_instance" "master-bootstrap" {
 	provisioner "remote-exec" {
 		inline  = [
 			"sudo cp /tmp/kubelet.confd.master /etc/conf.d/kubelet",
-			"cp /tmp/kubeadm.conf.yaml ~",
-		]
-		connection {
-			host = "${self.private_ip}"
-			type = "ssh"
-			user = "alpine"
-			password = ""
-			private_key = file("~/.ssh/aws")
-			bastion_host = "${aws_instance.edge.public_ip}"
-		}
-	}
-	provisioner "remote-exec" {
-		inline  = [
-			"sudo cp /tmp/kubelet.confd.master /etc/conf.d/kubelet",
 			"chmod +x /tmp/init-master.sh",
 		]
 		connection {
@@ -113,12 +147,25 @@ resource "aws_instance" "master-bootstrap" {
 			bastion_host = "${aws_instance.edge.public_ip}"
 		}
 	}
+}
+
+resource "aws_elb_attachment" "master-bootstrap-core" {
+	elb      = "${aws_elb.core-elb.id}"
+	instance = "${aws_instance.master-bootstrap.id}"
+}
+resource "aws_elb_attachment" "master-bootstrap-pub" {
+	elb      = "${aws_elb.pub-elb.id}"
+	instance = "${aws_instance.master-bootstrap.id}"
+}
+
+resource "null_resource" "kube-init" {
+
 	provisioner "remote-exec" {
 		inline  = [
-			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${self.private_ip} ${var.cluster_name} 10.20.64.0/18 10.12.128.0/17 > ~/output.json",
+			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${aws_instance.master-bootstrap.private_ip} ${var.cluster_name} 10.20.64.0/18 10.12.128.0/17 ${aws_elb.core-elb.dns_name} ${aws_elb.pub-elb.dns_name}  > ~/output.json",
 		]
 		connection {
-			host = "${self.private_ip}"
+			host = "${aws_instance.master-bootstrap.private_ip}"
 			type = "ssh"
 			user = "alpine"
 			password = ""
@@ -126,8 +173,8 @@ resource "aws_instance" "master-bootstrap" {
 			bastion_host = "${aws_instance.edge.public_ip}"
 		}
 	}
+	depends_on = [aws_instance.master-bootstrap]
 }
-
 
 data "external" "kubeadm" {
 	program = [
@@ -136,17 +183,19 @@ data "external" "kubeadm" {
 	]
 
 	query = {
-		host = "${aws_instance.master-bootstrap.private_ip}"
+		host     = "${aws_instance.master-bootstrap.private_ip}"
+		bastion  = "${aws_instance.edge.public_ip}"
+		endpoint = "${aws_elb.pub-elb.dns_name}"
 	}
-
-	depends_on = [aws_instance.master-bootstrap]
+	depends_on = [null_resource.kube-init]
 }
+
 
 resource "aws_instance" "master" {
 	count = 2
-	depends_on = [ aws_instance.master-bootstrap ]
-	ami = "ami-0fb394548acf15691"
-	subnet_id = "${aws_subnet.nodes.id}"
+	depends_on    = [ aws_instance.master-bootstrap ]
+	ami           = "ami-0fb394548acf15691"
+	subnet_id     = "${aws_subnet.nodes.id}"
 	instance_type = "t2.medium"
 
 	key_name = "${aws_key_pair.deployer.key_name}"
@@ -189,7 +238,7 @@ resource "aws_instance" "master" {
 	provisioner "remote-exec" {
 		inline  = [
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
-			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --experimental-control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
+			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -201,6 +250,19 @@ resource "aws_instance" "master" {
 		}
 	}
 }
+resource "aws_elb_attachment" "masters-attachement-priv" {
+	depends_on = [ aws_instance.master ]
+	count = 2
+	elb      = "${aws_elb.core-elb.id}"
+	instance = "${element(aws_instance.master.*, count.index).id}"
+}
+resource "aws_elb_attachment" "masters-attachement-pub" {
+	depends_on = [ aws_instance.master ]
+	count = 2
+	elb      = "${aws_elb.pub-elb.id}"
+	instance = "${element(aws_instance.master.*, count.index).id}"
+}
+
 
 resource "aws_instance" "worker" {
 	depends_on = [ aws_instance.master-bootstrap ]
@@ -248,7 +310,7 @@ resource "aws_instance" "worker" {
 	provisioner "remote-exec" {
 		inline  = [
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
-			"sudo kubeadm join ${aws_instance.master-bootstrap.private_ip}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --node-name $(hostname -f)",
+			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --node-name $(hostname -f)",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -262,7 +324,7 @@ resource "aws_instance" "worker" {
 }
 
 resource "null_resource" "master-provision" {
-	depends_on = [ aws_instance.master-bootstrap ]
+	depends_on = [ aws_instance.master ]
 	provisioner "remote-exec" {
 		inline  = [
 			"mkdir -p $HOME/.kube",
@@ -272,6 +334,7 @@ resource "null_resource" "master-provision" {
 			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name}",
 			"kubectl apply -f /tmp/config/calico-typha.yaml",
 			"kubectl apply -f /tmp/config/cloud-controller-manager.yaml",
+			"kubectl apply -f /tmp/config/ingress-nginx.yaml",
 		]
 		connection {
 			host = "${aws_instance.master-bootstrap.private_ip}"

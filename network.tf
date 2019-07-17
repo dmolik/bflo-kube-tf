@@ -39,6 +39,28 @@ resource "aws_security_group" "edge-rules" {
 		Name = "Edge SSH"
 	}
 }
+resource "aws_security_group" "core-lb" {
+	name = "core-lb"
+	vpc_id = "${aws_vpc.main.id}"
+
+	ingress {
+		from_port = 6443
+		to_port = 6443
+		protocol = "tcp"
+		cidr_blocks = ["0.0.0.0/0"]
+		# cidr_blocks = ["${aws_subnet.edge.cidr_block}"]
+	}
+
+	egress {
+		from_port   = 0
+		to_port     = 0
+		protocol    = "-1"
+		cidr_blocks = ["0.0.0.0/0"]
+	}
+	tags = {
+		Name = "Core LB"
+	}
+}
 resource "aws_security_group" "core-ssh" {
 	name = "core-ssh"
 	vpc_id = "${aws_vpc.main.id}"
@@ -128,10 +150,15 @@ resource "aws_route_table" "pub-default" {
 		Name = "Edge"
 	}
 }
+
 resource "aws_route_table_association" "public-edge-association" {
 	subnet_id = "${aws_subnet.edge.id}"
 	route_table_id = "${aws_route_table.pub-default.id}"
 }
+// resource "aws_route_table_association" "public-node-association" {
+// 	subnet_id = "${aws_subnet.nodes.id}"
+// 	route_table_id = "${aws_route_table.pub-default.id}"
+// }
 
 resource "aws_eip" "core" {
 	vpc = true

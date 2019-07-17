@@ -2,15 +2,18 @@
   - [ ] Packer AMIs
     - [ ] Preload Kubernetes
     - [ ] Preload Containers
-    - [ ] Ostree ( maybe use for os as well )
+    - [ ] Ostree ( maybe use for OS as well )
     - [ ] cri-o
     - [ ] Crun
   - [x] CNI - probably aws-cni
-  - [ ] Master HA - some sort of strange keepalived with haproxy :)
+  - [x] Master HA - some sort of strange keepalived with haproxy / started thinking about it, will probably do a ELB
   - [ ] Multi-Zone
   - [ ] Monitoring - Prometheus-Operator
   - [x] Cloud Provider
   - [ ] Storage
   - [ ] Dex (OIDC)
   - [ ] External DNS
-  - [ ] Ingress HaProxy or Nginx?
+  - [ ] Cert Manager
+  - [x] Ingress HaProxy or Nginx? Nginx
+  - [ ] Use nlb for control-plane
+  - [ ] clean up redundent provisioning
