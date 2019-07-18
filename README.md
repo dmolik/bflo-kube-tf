@@ -45,3 +45,6 @@ To get the make file to stop asking for API keys run something like this:
   - [Calico Quickstart guide](https://docs.projectcalico.org/v3.8/getting-started/kubernetes/installation/calico)
   - [Nginx Ingress Deployment Docs](https://kubernetes.github.io/ingress-nginx/deploy/)
   - [How To Create A VPC With Terraform](https://letslearndevops.com/2017/07/24/how-to-create-a-vpc-with-terraform/)
+  - [Packer Amazon EBS](https://www.packer.io/docs/builders/amazon-ebs.html)
+  - [Terraform AMI data source](https://www.terraform.io/docs/providers/aws/d/ami.html)
+  - [Packer Alpine Builder Repo](https://github.com/mcrute/alpine-ec2-ami)
