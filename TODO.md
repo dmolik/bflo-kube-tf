@@ -16,5 +16,5 @@
   - [ ] Cert Manager
   - [x] Ingress HaProxy or Nginx? Nginx
   - [ ] Use nlb for control-plane
-  - [ ] clean up redundent provisioning
+  - [x] clean up redundent provisioning
   - [x] kube-proxy to use ipvs
