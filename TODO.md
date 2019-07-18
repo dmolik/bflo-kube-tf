@@ -10,10 +10,11 @@
   - [ ] Multi-Zone
   - [ ] Monitoring - Prometheus-Operator
   - [x] Cloud Provider
-  - [ ] Storage
+  - [ ] Storage - will efs and ebs be enough? is ceph/gluster worth the effor?
   - [ ] Dex (OIDC)
   - [ ] External DNS
   - [ ] Cert Manager
   - [x] Ingress HaProxy or Nginx? Nginx
   - [ ] Use nlb for control-plane
   - [ ] clean up redundent provisioning
+  - [ ] kube-proxy to use ipvs
