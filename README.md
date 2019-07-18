@@ -2,7 +2,28 @@
 
 Go from Zero to Hero in about 5 minutes. The whole concept is to go from nothing to a secure multi-tenant kubernetes in as short amount of time as possible. The driving factor is to provide safe and vanilla sandbo for members.
 
-See the [Todo](TODO.md) for roadmap and plans.
+See the [TODO](TODO.md) for roadmap and plans.
+
+## Deployment
+
+Deployment is real easy but you will need a few things:
+
+You are probably covered if you're running MacOS or a Linux distribution.
+
+  - A working shell - IE: bash, zsh, or tsh; this is used for data gathering and provisioning.
+  - ssh client - the ssh command is used as part of the data gathering and provisioning steps.
+  - Terraform, you can download it [Here](https://www.terraform.io/downloads.html).
+
+The next step is to create an AWS api key. Under Services -> IAM -> Users -> Security Credentials -> Access Keys.
+
+Now the grand reveal; to create your kubeadm kubernetes cluster you need to run:
+
+    export AWS_ACCESS_KEY_ID=<aws access key>
+    export AWS_SECRET_ACCESS_KEY=<aws secret>
+    export AWS_DEFAULT_REGION=<region name>
+    terraform apply
+
+That's it, enjoy!
 
 ## Resources used
 
