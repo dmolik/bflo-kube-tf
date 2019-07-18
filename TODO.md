@@ -1,7 +1,7 @@
   - [x] Converge on host names and instance names
-  - [ ] Packer AMIs
-    - [ ] Preload Kubernetes
-    - [ ] Preload Containers
+  - [-] Packer AMIs
+    - [x] Preload Kubernetes
+    - [x] Preload Containers
     - [ ] Ostree ( maybe use for OS as well )
     - [ ] cri-o
     - [ ] Crun
@@ -17,4 +17,4 @@
   - [x] Ingress HaProxy or Nginx? Nginx
   - [ ] Use nlb for control-plane
   - [ ] clean up redundent provisioning
-  - [ ] kube-proxy to use ipvs
+  - [x] kube-proxy to use ipvs

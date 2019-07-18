@@ -18,12 +18,23 @@ The next step is to create an AWS api key. Under `Services -> IAM -> Users -> Se
 
 Now the grand reveal; to create your kubeadm kubernetes cluster you need to run:
 
+    make
+
+That's it, enjoy!
+
+To only run the terraform run:
+
+    make terraform
+
+To build the AMIs, run:
+
+    make packer
+
+To get the make file to stop asking for API keys run something like this:
+
     export AWS_ACCESS_KEY_ID=<aws access key>
     export AWS_SECRET_ACCESS_KEY=<aws secret>
     export AWS_DEFAULT_REGION=<region name>
-    terraform apply
-
-That's it, enjoy!
 
 ## Resources used
 

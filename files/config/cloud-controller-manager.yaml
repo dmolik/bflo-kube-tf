@@ -44,7 +44,7 @@ spec:
       - name: cloud-controller-manager
         # for in-tree providers we use k8s.gcr.io/cloud-controller-manager
         # this can be replaced with any other image for out-of-tree providers
-        image: k8s.gcr.io/cloud-controller-manager:v1.15.0
+        image: k8s.gcr.io/cloud-controller-manager:v1.15.1
         command:
         - /bin/sh
         args:

@@ -1,0 +1,46 @@
+{
+	"variables": {
+		"aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
+		"aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+		"region": "{{env AWS_DEFAULT_REGION}}"
+	},
+	"builders": [
+		{
+			"type": "amazon-ebs",
+			"access_key": "{{user `aws_access_key`}}",
+			"secret_key": "{{user `aws_secret_key`}}",
+			"region": "{{user `region`}}",
+			"source_ami": "ami-0fb394548acf15691",
+			"instance_type": "t2.micro",
+			"ssh_username": "alpine",
+			"ami_name": "bflo-alpine-k8s-{{timestamp}}",
+			"tags": {
+				"Name": "bflo-alpine-k8s-{{timestamp}}"
+			},
+			"launch_block_device_mappings": [
+				{
+					"device_name": "/dev/xvda",
+					"volume_size": 3,
+					"volume_type": "gp2",
+					"delete_on_termination": true
+				}
+			],
+			"subnet_filter": {
+				"filters":{
+					"tag:Name":"packer"
+				}
+			}
+		}
+	],
+	"provisioners": [
+		{
+			"type": "file",
+			"source": "files/",
+			"destination": "/tmp"
+		},
+		{
+			"type": "shell",
+			"script": "scripts/install-kubernetes.sh"
+		}
+	]
+}
