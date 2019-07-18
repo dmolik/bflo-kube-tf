@@ -14,7 +14,7 @@ You are probably covered if you're running MacOS or a Linux distribution.
   - ssh client - the ssh command is used as part of the data gathering and provisioning steps.
   - Terraform, you can download it [Here](https://www.terraform.io/downloads.html).
 
-The next step is to create an AWS api key. Under Services -> IAM -> Users -> Security Credentials -> Access Keys.
+The next step is to create an AWS api key. Under `Services -> IAM -> Users -> Security Credentials -> Access Keys`
 
 Now the grand reveal; to create your kubeadm kubernetes cluster you need to run:
 
