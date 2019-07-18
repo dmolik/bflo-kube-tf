@@ -13,6 +13,8 @@ You are probably covered if you're running MacOS or a Linux distribution.
   - A working shell - IE: bash, zsh, or tsh; this is used for data gathering and provisioning.
   - ssh client - the ssh command is used as part of the data gathering and provisioning steps.
   - Terraform, you can download it [Here](https://www.terraform.io/downloads.html).
+  - Packer, you can get it [Here](https://www.packer.io/downloads.html)
+  - Some sort of make, perhaps GNUMake.
 
 The next step is to create an AWS api key. Under `Services -> IAM -> Users -> Security Credentials -> Access Keys`
 
