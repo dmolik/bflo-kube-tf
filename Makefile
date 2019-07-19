@@ -15,3 +15,6 @@ terraform:
 
 packer:
 	packer build ami.json
+
+clean:
+	terraform destroy -auto-approve
