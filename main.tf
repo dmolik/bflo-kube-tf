@@ -271,8 +271,7 @@ resource "aws_instance" "worker" {
 	}
 }
 
-resource "null_resource" "join-master" {
-	count      = 2
+resource "null_resource" "join-master-0" {
 	depends_on = [ data.external.kubeadm ]
 
 	provisioner "remote-exec" {
@@ -285,7 +284,29 @@ resource "null_resource" "join-master" {
 			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
 		]
 		connection {
-			host         = "${element(aws_instance.master.*, count.index).private_ip}"
+			host         = "${element(aws_instance.master.*, 0).private_ip}"
+			type         = "ssh"
+			user         = "alpine"
+			password     = ""
+			private_key  = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+}
+resource "null_resource" "join-master-1" {
+	depends_on = [ null_resource.join-master-0 ]
+
+	provisioner "remote-exec" {
+		inline  = [
+			"sudo modprobe br_netfilter",
+			"sudo resize2fs /dev/xvda",
+			"sudo su -c 'uuidgen|tr -d - > /etc/machine-id'",
+			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
+			"sudo rc-update add kubelet default",
+			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
+		]
+		connection {
+			host         = "${element(aws_instance.master.*, 1).private_ip}"
 			type         = "ssh"
 			user         = "alpine"
 			password     = ""
