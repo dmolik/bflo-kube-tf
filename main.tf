@@ -133,9 +133,12 @@ resource "aws_instance" "master-bootstrap" {
 	}
 	provisioner "remote-exec" {
 		inline  = [
+			"sudo modprobe br_netfilter",
+			"sudo resize2fs /dev/xvda",
 			"sudo su -c 'uuidgen|tr -d - > /etc/machine-id'",
 			"sudo cp /tmp/kubelet.confd.master /etc/conf.d/kubelet",
 			"chmod +x /tmp/init-master.sh",
+			"sudo rc-update add kubelet default",
 		]
 		connection {
 			host = "${self.private_ip}"
@@ -270,12 +273,15 @@ resource "aws_instance" "worker" {
 
 resource "null_resource" "join-master" {
 	count      = 2
-	depends_on = [ aws_instance.master, data.external.kubeadm ]
+	depends_on = [ data.external.kubeadm ]
 
 	provisioner "remote-exec" {
 		inline  = [
+			"sudo modprobe br_netfilter",
+			"sudo resize2fs /dev/xvda",
 			"sudo su -c 'uuidgen|tr -d - > /etc/machine-id'",
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
+			"sudo rc-update add kubelet default",
 			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --control-plane --certificate-key ${data.external.kubeadm.result.cert_key} --node-name $(hostname -f)",
 		]
 		connection {
@@ -291,12 +297,15 @@ resource "null_resource" "join-master" {
 
 resource "null_resource" "join-worker" {
 	count      = 3
-	depends_on = [ aws_instance.worker, data.external.kubeadm ]
+	depends_on = [ data.external.kubeadm ]
 
 	provisioner "remote-exec" {
 		inline  = [
+			"sudo modprobe br_netfilter",
+			"sudo resize2fs /dev/xvda",
 			"sudo su -c 'uuidgen|tr -d - > /etc/machine-id'",
 			"sudo cp /tmp/kubelet.confd.node /etc/conf.d/kubelet",
+			"sudo rc-update add kubelet default",
 			"sudo kubeadm join ${aws_elb.core-elb.dns_name}:6443 --token ${data.external.kubeadm.result.token} --discovery-token-ca-cert-hash ${data.external.kubeadm.result.hash} --node-name $(hostname -f)",
 		]
 		connection {
@@ -312,7 +321,7 @@ resource "null_resource" "join-worker" {
 
 
 resource "null_resource" "master-provision" {
-	depends_on = [ aws_instance.master ]
+	depends_on = [ data.external.kubeadm ]
 	provisioner "remote-exec" {
 		inline  = [
 			"mkdir -p $HOME/.kube",

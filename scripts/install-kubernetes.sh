@@ -4,7 +4,7 @@ sudo apk update
 sudo su -c 'echo http://dl-cdn.alpinelinux.org/alpine/edge/testing/ >> /etc/apk/repositories'
 sudo apk add util-linux
 sudo apk add socat ethtool ipvsadm iproute2 iptables ebtables
-sudo apk add containerd kubernetes ca-certificates
+sudo apk add containerd kubernetes ca-certificates ipset
 
 sudo rm /usr/bin/kube-apiserver
 sudo rm /usr/bin/kube-controller-manager
@@ -18,13 +18,15 @@ for d in cpuset memory cpu cpuacct blkio devices freezer net_cls perf_event net_
 	sudo mount -t cgroup $d -o $d /sys/fs/cgroup/$d
 done
 # sudo sed -i -e 's/^#\?\(rc_controller_cgroups=\).*/\1"YES"/' /etc/rc.conf
+sudo sed -i -e 's/^#\?\(rc_logger\)\=.*/\1\="YES"/' /etc/rc.conf
+sudo sed -i -e 's/^#\?\(rc_parallel\)\=.*/\1\="YES"/' /etc/rc.conf
 sudo rc-update add cgroups sysinit
 wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.15.0/crictl-v1.15.0-linux-amd64.tar.gz
 tar xf crictl*
 rm crictl-*.tar.gz
 sudo mv crictl /usr/bin
 
-sudo su -c 'echo  "modules=\"configs overlay ip_tables br_netfilter ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh\"" >> /etc/conf.d/modules'
+sudo su -c 'echo  "modules=\"br_netfilter configs overlay ip_tables br_netfilter ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh br_netfilter\"" >> /etc/conf.d/modules'
 
 sudo su -c 'echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf'
 sudo su -c 'echo "net.ipv4.ip_local_port_range=1024 65000" >> /etc/sysctl.conf'
