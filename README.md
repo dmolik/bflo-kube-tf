@@ -48,3 +48,8 @@ To get the make file to stop asking for API keys run something like this:
   - [Packer Amazon EBS](https://www.packer.io/docs/builders/amazon-ebs.html)
   - [Terraform AMI data source](https://www.terraform.io/docs/providers/aws/d/ami.html)
   - [Packer Alpine Builder Repo](https://github.com/mcrute/alpine-ec2-ami)
+  - [Cert-Manager Install](https://docs.cert-manager.io/en/latest/getting-started/install/kubernetes.html)
+  - [Cert-Manager ACME Issuer](https://docs.cert-manager.io/en/latest/tutorials/acme/http-validation.html)
+  - [Cert-Manager Ingress Shim](https://docs.cert-manager.io/en/latest/tasks/issuing-certificates/ingress-shim.html)
+  - [External-DNS AWS Tutorial](https://github.com/kubernetes-incubator/external-dns/blob/master/docs/tutorials/aws.md)
+  - [External-DNS Ingress Tutorial](https://github.com/kubernetes-incubator/external-dns/blob/master/docs/tutorials/nginx-ingress.md)
