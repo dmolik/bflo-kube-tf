@@ -109,10 +109,21 @@ resource "aws_iam_policy" "master_policy" {
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
         "iam:CreateServiceLinkedRole",
-        "kms:DescribeKey"
+        "kms:DescribeKey",
+        "route53:ListHostedZones",
+        "route53:ListResourceRecordSets"
       ],
       "Resource": [
         "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": [
+        "arn:aws:route53:::hostedzone/*"
       ]
     }
   ]

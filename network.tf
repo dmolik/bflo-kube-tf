@@ -16,7 +16,6 @@ resource "aws_subnet" "edge" {
 		Name = "Edge"
 	}
 }
-
 resource "aws_security_group" "edge-rules" {
 	name = "edge-rules"
 	vpc_id = "${aws_vpc.main.id}"
@@ -26,7 +25,6 @@ resource "aws_security_group" "edge-rules" {
 		to_port = 22
 		protocol = "tcp"
 		cidr_blocks = ["0.0.0.0/0"]
-		# cidr_blocks = ["${aws_subnet.edge.cidr_block}"]
 	}
 
 	egress {
@@ -39,6 +37,7 @@ resource "aws_security_group" "edge-rules" {
 		Name = "Edge SSH"
 	}
 }
+
 resource "aws_security_group" "core-lb" {
 	name = "core-lb"
 	vpc_id = "${aws_vpc.main.id}"
@@ -48,7 +47,6 @@ resource "aws_security_group" "core-lb" {
 		to_port = 6443
 		protocol = "tcp"
 		cidr_blocks = ["0.0.0.0/0"]
-		# cidr_blocks = ["${aws_subnet.edge.cidr_block}"]
 	}
 
 	egress {
@@ -113,6 +111,7 @@ resource "aws_subnet" "nodes" {
 		KubernetesCluster = "${var.cluster_name}"
 	}
 }
+// cidr_block = "10.20.104.0/21" "10.20.112.0/21" "10.20.120.0/21" "10.20.64.0/22" "10.20.68.0/22" "10.20.72.0/22"
 resource "aws_subnet" "services" {
 	vpc_id = "${aws_vpc.main.id}"
 	cidr_block = "10.20.64.0/18"
@@ -122,6 +121,7 @@ resource "aws_subnet" "services" {
 		KubernetesCluster = "${var.cluster_name}"
 	}
 }
+
 resource "aws_subnet" "pods" {
 	vpc_id = "${aws_vpc.main.id}"
 	cidr_block = "10.20.128.0/17"
@@ -132,6 +132,51 @@ resource "aws_subnet" "pods" {
 	}
 }
 
+//resource "aws_security_group" "services-rules" {
+//	name = "services-rules"
+//	vpc_id = "${aws_vpc.main.id}"
+//
+//	ingress {
+//		from_port = 22
+//		to_port = 22
+//		protocol = "tcp"
+//		cidr_blocks = ["0.0.0.0/0"]
+//	}
+//	ingress {
+//		from_port = 53
+//		to_port = 53
+//		protocol = "tcp"
+//		cidr_blocks = ["0.0.0.0/0"]
+//	}
+//	ingress {
+//		from_port = 443
+//		to_port = 443
+//		protocol = "tcp"
+//		cidr_blocks = ["0.0.0.0/0"]
+//	}
+//	ingress {
+//		from_port   = 0
+//		to_port     = 0
+//		protocol    = "-1"
+//		cidr_blocks = ["${aws_subnet.nodes.cidr_block}", "${aws_subnet.edge.cidr_block}","${aws_subnet.services.cidr_block}","${aws_subnet.pods.cidr_block}"]
+//	}
+//
+//	egress {
+//		from_port   = 0
+//		to_port     = 0
+//		protocol    = "-1"
+//		cidr_blocks = ["0.0.0.0/0"]
+//	}
+//	tags = {
+//		Name = "Public Services"
+//		KubernetesCluster = "${var.cluster_name}"
+//	}
+//}
+
+// resource "aws_route_table_association" "public-node-association" {
+// 	subnet_id = "${aws_subnet.nodes.id}"
+// 	route_table_id = "${aws_route_table.pub-default.id}"
+// }
 resource "aws_internet_gateway" "edge" {
 	vpc_id = "${aws_vpc.main.id}"
 	tags = {
@@ -155,6 +200,12 @@ resource "aws_route_table_association" "public-edge-association" {
 	subnet_id = "${aws_subnet.edge.id}"
 	route_table_id = "${aws_route_table.pub-default.id}"
 }
+resource "aws_route_table_association" "services-pub-association" {
+	subnet_id = "${aws_subnet.services.id}"
+	route_table_id = "${aws_route_table.pub-default.id}"
+}
+
+
 // resource "aws_route_table_association" "public-node-association" {
 // 	subnet_id = "${aws_subnet.nodes.id}"
 // 	route_table_id = "${aws_route_table.pub-default.id}"

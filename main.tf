@@ -1,20 +1,5 @@
 provider "aws" {}
 
-variable "availability_zone" {
-	type = string
-	default = "us-east-2b"
-}
-
-variable "cluster_name" {
-	type = string
-	default = "bflo-kube"
-}
-
-resource "aws_key_pair" "deployer" {
-	key_name = "deployer"
-	public_key = file("~/.ssh/aws.pub")
-}
-
 
 data "aws_ami" "kube" {
 	most_recent      = true
@@ -25,6 +10,15 @@ data "aws_ami" "kube" {
 		name   = "name"
 		values = ["bflo-alpine-k8s-*"]
 	}
+}
+
+data "aws_route53_zone" "k8s" {
+	name = "${var.external_dns}"
+}
+
+resource "aws_key_pair" "deployer" {
+	key_name = "deployer"
+	public_key = file("~/.ssh/aws.pub")
 }
 
 resource "aws_instance" "edge" {
@@ -55,7 +49,6 @@ resource "aws_instance" "edge" {
 resource "aws_elb" "core-elb" {
 	name = "core-kube-elb"
 
-	// availability_zones = ["us-east-2b"]
 	security_groups = ["${aws_security_group.core-lb.id}"]
 	subnets = ["${aws_subnet.nodes.id}"]
 	internal = true
@@ -79,10 +72,8 @@ resource "aws_elb" "core-elb" {
 resource "aws_elb" "pub-elb" {
 	name = "pub-kube-elb"
 
-	// availability_zones = ["us-east-2a", "us-east-2b", "us-east-2c"]
 	security_groups = ["${aws_security_group.core-lb.id}"]
 	subnets = ["${aws_subnet.edge.id}"]
-	//internal = true
 	listener {
 		instance_port     = 6443
 		instance_protocol = "tcp"
@@ -105,10 +96,10 @@ resource "aws_instance" "master-bootstrap" {
 	depends_on = [ aws_route_table_association.public-edge-association ]
 	ami = "${data.aws_ami.kube.id}"
 	subnet_id = "${aws_subnet.nodes.id}"
-	instance_type = "t2.medium"
+	instance_type = "${var.master_type}"
 
 	key_name = "${aws_key_pair.deployer.key_name}"
-	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}"] // , "${aws_security_group.services-rules.id}" ]
 	iam_instance_profile = "${aws_iam_instance_profile.master_profile.name}"
 
 	tags = {
@@ -175,7 +166,7 @@ resource "null_resource" "kube-init" {
 			bastion_host = "${aws_instance.edge.public_ip}"
 		}
 	}
-	depends_on = [aws_instance.master-bootstrap]
+	depends_on = [aws_route_table_association.core-association, aws_instance.master-bootstrap]
 }
 
 data "external" "kubeadm" {
@@ -198,10 +189,10 @@ resource "aws_instance" "master" {
 	depends_on    = [ aws_instance.master-bootstrap ]
 	ami           = "${data.aws_ami.kube.id}"
 	subnet_id     = "${aws_subnet.nodes.id}"
-	instance_type = "t2.medium"
+	instance_type = "${var.master_type}"
 
 	key_name               = "${aws_key_pair.deployer.key_name}"
-	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}"] //, "${aws_security_group.services-rules.id}" ]
 	iam_instance_profile   = "${aws_iam_instance_profile.master_profile.name}"
 
 	tags = {
@@ -241,13 +232,13 @@ resource "aws_elb_attachment" "masters-attachement-pub" {
 
 resource "aws_instance" "worker" {
 	depends_on = [ aws_instance.master-bootstrap ]
-	count = 3
+	count = var.num_workers
 	ami = "${data.aws_ami.kube.id}"
 	subnet_id = "${aws_subnet.nodes.id}"
-	instance_type = "t3a.medium"
+	instance_type = "${var.worker_type}"
 
 	key_name = "${aws_key_pair.deployer.key_name}"
-	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}" ]
+	vpc_security_group_ids = ["${aws_security_group.core-ssh.id}", "${aws_security_group.core-kube.id}"] // , "${aws_security_group.services-rules.id}"]
 	iam_instance_profile = "${aws_iam_instance_profile.node_profile.name}"
 	tags = {
 		Name = "Worker-${count.index}"
@@ -317,7 +308,7 @@ resource "null_resource" "join-master-1" {
 }
 
 resource "null_resource" "join-worker" {
-	count      = 3
+	count      = var.num_workers
 	depends_on = [ data.external.kubeadm ]
 
 	provisioner "remote-exec" {
@@ -349,10 +340,29 @@ resource "null_resource" "master-provision" {
 			"sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
 			"sudo chown alpine:alpine $HOME/.kube/config",
 			"chmod +x /tmp/prep-config.sh",
-			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name}",
+			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name} ${var.external_dns} ${data.aws_route53_zone.k8s.zone_id}",
 			"kubectl apply -f /tmp/config/calico-typha.yaml",
 			"kubectl apply -f /tmp/config/cloud-controller-manager.yaml",
 			"kubectl apply -f /tmp/config/ingress-nginx.yaml",
+			"kubectl apply -f /tmp/config/external-dns.yaml",
+		]
+		connection {
+			host = "${aws_instance.master-bootstrap.private_ip}"
+			type = "ssh"
+			user = "alpine"
+			password = ""
+			private_key = file("~/.ssh/aws")
+			bastion_host = "${aws_instance.edge.public_ip}"
+		}
+	}
+}
+resource "null_resource" "addons" {
+	depends_on = [ data.external.kubeadm, null_resource.join-master-1 ]
+	provisioner "remote-exec" {
+		inline  = [
+			"kubectl apply -f /tmp/config/cert-manager.yaml",
+			"sleep 10",
+			"kubectl apply -f /tmp/config/cert-issuers.yaml",
 		]
 		connection {
 			host = "${aws_instance.master-bootstrap.private_ip}"
