@@ -1582,6 +1582,8 @@ spec:
           - --v=2
           - --cluster-resource-namespace=$(POD_NAMESPACE)
           - --leader-election-namespace=$(POD_NAMESPACE)
+          - --default-issuer-name=letsencrypt
+          - --default-issuer-kind=ClusterIssuer
           ports:
           - containerPort: 9402
           env:
