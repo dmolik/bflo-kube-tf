@@ -19,7 +19,11 @@ apiServer:
   - @ELB_DNS_PRIV@
   - @ELB_DNS_PUB@
   extraArgs:
-   cloud-provider: aws
+    cloud-provider: aws
+    oidc-issuer-url: https://dex.@EXTERNAL_DNS@/dex
+    oidc-client-id: loginapp
+    oidc-username-claim: name
+    oidc-groups-claim: groups
 controllerManager:
   extraArgs:
     cloud-provider: aws

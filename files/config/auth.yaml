@@ -1,0 +1,299 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auth
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: authcodes.dex.coreos.com
+spec:
+  group: dex.coreos.com
+  names:
+    kind: AuthCode
+    listKind: AuthCodeList
+    plural: authcodes
+    singular: authcode
+  scope: Namespaced
+  version: v1
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: dex
+rules:
+- apiGroups: ["dex.coreos.com"] # API group created by dex
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["create"] # To manage its own resources identity must be able to create customresourcedefinitions.
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: dex
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dex
+subjects:
+- kind: ServiceAccount
+  name: dex                 # Service account assigned to the dex pod.
+  namespace: auth           # The namespace dex is running in.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dex
+  namespace: auth
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dex
+  namespace: auth
+data:
+  config.yaml: |
+    issuer: https://dex.@EXTERNAL_DNS@/dex
+    storage:
+      type: kubernetes
+      config:
+        inCluster: true
+    web:
+      http: 0.0.0.0:5556
+    logger:
+      level: "debug"
+      format: text
+
+    connectors:
+    - type: github
+      # Required field for connector id.
+      id: github
+      # Required field for connector name.
+      name: GitHub
+      config:
+        # Credentials can be string literals or pulled from the environment.
+        clientID: @GITHUB_ID@
+        clientSecret: @GITHUB_SECRET@
+        redirectURI: https://dex.@EXTERNAL_DNS@/dex/callback
+        orgs:
+        - name: @GITHUB_ORG@
+          # A white list of teams. Only include group claims for these teams.
+          teams:
+          - admins
+          - powerusers
+          - users
+        loadAllGroups: false
+        teamNameField: slug
+        useLoginAsID: false
+    oauth2:
+      skipApprovalScreen: true
+
+    staticClients:
+    - id: login
+      redirectURIs:
+      - 'https://login.@EXTERNAL_DNS@/callback'
+      name: 'Login Application'
+      secret: 4TORGiNV9M54BTk1v7dNuFSaI6hUjfjr
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dex
+  namespace: auth
+spec:
+  ports:
+  - name: dex
+    port: 5556
+    protocol: TCP
+    targetPort: 5556
+  selector:
+    app: dex
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: dex
+  namespace: auth
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    certmanager.k8s.io/cluster-issuer: letsencrypt
+spec:
+  rules:
+    - host: dex.@EXTERNAL_DNS@
+      http:
+        paths:
+          - backend:
+              serviceName: dex
+              servicePort: 5556
+            path: /
+  tls:
+    - hosts:
+        - dex.@EXTERNAL_DNS@
+      secretName: dex-tls
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: dex
+  name: dex
+  namespace: auth
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dex
+    spec:
+      serviceAccountName: dex
+      containers:
+      - image: quay.io/coreos/dex:v2.9.0
+        name: dex
+        command: ["dex", "serve", "/etc/dex/cfg/config.yaml"]
+        ports:
+        - name: http
+          containerPort: 5556
+        volumeMounts:
+        - name: config
+          mountPath: /etc/dex/cfg
+      volumes:
+      - name: config
+        configMap:
+          name: dex
+          items:
+          - key: config.yaml
+            path: config.yaml
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: loginapp
+  namespace: auth
+data:
+  config.yaml: |
+    debug: false
+    client_id: "login"
+    client_secret: 4TORGiNV9M54BTk1v7dNuFSaI6hUjfjr
+    issuer_url: "https://dex.@EXTERNAL_DNS@/dex"
+    issuer_root_ca: "/etc/ssl/ca.pem"
+    redirect_url: "https://login.@EXTERNAL_DNS@/callback"
+    listen: "http://0.0.0.0:5555"
+    disable_choices: false
+    extra_scopes: "groups"
+    app_name: "Kubernetes Auth"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loginapp
+  namespace: auth
+spec:
+  ports:
+  - name: loginapp
+    port: 5555
+    protocol: TCP
+    targetPort: 5555
+  selector:
+    app: loginapp
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: loginapp
+  namespace: auth
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    certmanager.k8s.io/cluster-issuer: letsencrypt
+spec:
+  rules:
+    - host: login.@EXTERNAL_DNS@
+      http:
+        paths:
+          - backend:
+              serviceName: loginapp
+              servicePort: 5555
+            path: /
+  tls:
+    - hosts:
+        - login.@EXTERNAL_DNS@
+      secretName: loginapp-tls
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: ca
+  namespace: auth
+data:
+  ca.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
+    MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
+    DkRTVCBSb290IENBIFgzMB4XDTAwMDkzMDIxMTIxOVoXDTIxMDkzMDE0MDExNVow
+    PzEkMCIGA1UEChMbRGlnaXRhbCBTaWduYXR1cmUgVHJ1c3QgQ28uMRcwFQYDVQQD
+    Ew5EU1QgUm9vdCBDQSBYMzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
+    AN+v6ZdQCINXtMxiZfaQguzH0yxrMMpb7NnDfcdAwRgUi+DoM3ZJKuM/IUmTrE4O
+    rz5Iy2Xu/NMhD2XSKtkyj4zl93ewEnu1lcCJo6m67XMuegwGMoOifooUMM0RoOEq
+    OLl5CjH9UL2AZd+3UWODyOKIYepLYYHsUmu5ouJLGiifSKOeDNoJjj4XLh7dIN9b
+    xiqKqy69cK3FCxolkHRyxXtqqzTWMIn/5WgTe1QLyNau7Fqckh49ZLOMxt+/yUFw
+    7BZy1SbsOFU5Q9D8/RhcQPGX69Wam40dutolucbY38EVAjqr2m7xPi71XAicPNaD
+    aeQQmxkqtilX4+U9m5/wAl0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNV
+    HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFMSnsaR7LHH62+FLkHX/xBVghYkQMA0GCSqG
+    SIb3DQEBBQUAA4IBAQCjGiybFwBcqR7uKGY3Or+Dxz9LwwmglSBd49lZRNI+DT69
+    ikugdB/OEIKcdBodfpga3csTS7MgROSR6cz8faXbauX+5v3gTt23ADq1cEmv8uXr
+    AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz
+    R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
+    JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
+    Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
+    -----END CERTIFICATE-----
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: loginapp
+  namespace: auth
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: loginapp
+    spec:
+      containers:
+      - image: objectiflibre/login-app:latest
+        name: loginapp
+        ports:
+        - name: http
+          containerPort: 5555
+        volumeMounts:
+        - name: ca
+          mountPath: /etc/ssl/
+        - name: config
+          mountPath: /app/
+      volumes:
+      - name: config
+        configMap:
+          name: loginapp
+          items:
+          - key: config.yaml
+            path: config.yaml
+       - name: ca
+         configMap:
+           name: ca
+           items:
+           - key: ca.pem
+             path: ca.pem
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: github_cluster_admin
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: Group
+    name: admins

@@ -33,3 +33,14 @@ variable "external_dns" {
 	type = string
 	default = "k8s.bflo.dev"
 }
+
+variable "github_id" {
+	type = string
+}
+variable "github_secret" {
+	type = string
+}
+variable "github_org" {
+	type = string
+	default = "bflo-cncf"
+}

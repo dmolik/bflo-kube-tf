@@ -155,7 +155,7 @@ resource "null_resource" "kube-init" {
 
 	provisioner "remote-exec" {
 		inline  = [
-			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${aws_instance.master-bootstrap.private_ip} ${var.cluster_name} 10.20.64.0/18 10.12.128.0/17 ${aws_elb.core-elb.dns_name} ${aws_elb.pub-elb.dns_name}  > ~/output.json",
+			"/tmp/init-master.sh /tmp/kubeadm.conf.yaml ${aws_instance.master-bootstrap.private_ip} ${var.cluster_name} 10.20.64.0/18 10.12.128.0/17 ${aws_elb.core-elb.dns_name} ${aws_elb.pub-elb.dns_name}  ${var.external_dns} > ~/output.json",
 		]
 		connection {
 			host = "${aws_instance.master-bootstrap.private_ip}"
@@ -340,7 +340,7 @@ resource "null_resource" "master-provision" {
 			"sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config",
 			"sudo chown alpine:alpine $HOME/.kube/config",
 			"chmod +x /tmp/prep-config.sh",
-			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name} ${var.external_dns} ${data.aws_route53_zone.k8s.zone_id}",
+			"/tmp/prep-config.sh /tmp/config 10.20.64.0/18 10.20.128.0/17 ${var.cluster_name} ${var.external_dns} ${data.aws_route53_zone.k8s.zone_id} ${var.github_id} ${var.github_secret} ${var.github_org}",
 			"kubectl apply -f /tmp/config/calico-typha.yaml",
 			"kubectl apply -f /tmp/config/cloud-controller-manager.yaml",
 			"kubectl apply -f /tmp/config/ingress-nginx.yaml",
@@ -361,8 +361,10 @@ resource "null_resource" "addons" {
 	provisioner "remote-exec" {
 		inline  = [
 			"kubectl apply -f /tmp/config/cert-manager.yaml",
-			"sleep 10",
+			"sleep 30",
 			"kubectl apply -f /tmp/config/cert-issuers.yaml",
+			"sleep 10",
+			"kubectl apply -f /tmp/config/auth.yaml",
 		]
 		connection {
 			host = "${aws_instance.master-bootstrap.private_ip}"
