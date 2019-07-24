@@ -278,12 +278,12 @@ spec:
           items:
           - key: config.yaml
             path: config.yaml
-       - name: ca
-         configMap:
-           name: ca
-           items:
-           - key: ca.pem
-             path: ca.pem
+      - name: ca
+        configMap:
+          name: ca
+          items:
+          - key: ca.pem
+            path: ca.pem
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
