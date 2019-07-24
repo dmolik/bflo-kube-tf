@@ -356,6 +356,13 @@ resource "null_resource" "master-provision" {
 		}
 	}
 }
+resource "null_resource" "admin-kube-conf" {
+	depends_on = [ null_resource.master-provision ]
+	provisioner "local-exec" {
+		command = "scripts/fetch-kubeconfig.sh ${aws_instance.master-bootstrap.private_ip} ~/.ssh/aws ${aws_instance.edge.public_ip} ${aws_elb.pub-elb.dns_name}"
+	}
+}
+
 resource "null_resource" "addons" {
 	depends_on = [ data.external.kubeadm, null_resource.join-master-1 ]
 	provisioner "remote-exec" {

@@ -91,7 +91,7 @@ data:
       skipApprovalScreen: true
 
     staticClients:
-    - id: login
+    - id: loginapp
       redirectURIs:
       - 'https://login.@EXTERNAL_DNS@/callback'
       name: 'Login Application'
@@ -174,7 +174,7 @@ metadata:
 data:
   config.yaml: |
     debug: false
-    client_id: "login"
+    client_id: "loginapp"
     client_secret: 4TORGiNV9M54BTk1v7dNuFSaI6hUjfjr
     issuer_url: "https://dex.@EXTERNAL_DNS@/dex"
     issuer_root_ca: "/etc/ssl/ca.pem"
