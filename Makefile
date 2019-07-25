@@ -23,5 +23,3 @@ packer:
 
 clean:
 	terraform destroy -auto-approve -var 'github_secret=a' -var 'github_id=a'
-
-.PHONY: test
